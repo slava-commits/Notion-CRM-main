@@ -601,12 +601,14 @@ class AttioClient:
         try:
             # Handle different datetime formats from Attio
             formats = [
-                "%Y-%m-%dT%H:%M:%S.%fZ",
-                "%Y-%m-%dT%H:%M:%SZ",
-                "%Y-%m-%dT%H:%M:%S.%f%z",
-                "%Y-%m-%dT%H:%M:%S%z",
-                "%Y-%m-%d %H:%M:%S",
-                "%Y-%m-%d"
+                "%Y-%m-%dT%H:%M:%S.%fZ",           # 2025-05-10T07:15:29.000000000Z
+                "%Y-%m-%dT%H:%M:%S.%f%z",          # With timezone
+                "%Y-%m-%dT%H:%M:%SZ",              # 2025-05-10T07:15:29Z
+                "%Y-%m-%dT%H:%M:%S%z",             # With timezone
+                "%Y-%m-%dT%H:%M:%S.%f",            # Without Z
+                "%Y-%m-%dT%H:%M:%S",               # Basic format
+                "%Y-%m-%d %H:%M:%S",               # Space separated
+                "%Y-%m-%d"                         # Date only
             ]
             
             for fmt in formats:
@@ -614,6 +616,16 @@ class AttioClient:
                     return datetime.strptime(datetime_str, fmt)
                 except ValueError:
                     continue
+            
+            # Try to handle the specific Attio format with extra precision
+            if datetime_str.endswith('Z') and '.' in datetime_str:
+                # Remove extra precision digits (e.g., 000000000Z -> Z)
+                import re
+                cleaned_str = re.sub(r'\.(\d{6})\d+Z', r'.\1Z', datetime_str)
+                try:
+                    return datetime.strptime(cleaned_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+                except ValueError:
+                    pass
             
             logger.warning(f"Could not parse datetime: {datetime_str}")
             return None
